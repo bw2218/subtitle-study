@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CONCURRENCY = 8;
-const TIMEOUT_MS = 8000;
+export const maxDuration = 30;
+
+const CONCURRENCY = 12;
+const TIMEOUT_MS = 6000;
 
 async function translateOne(text: string): Promise<string> {
   const controller = new AbortController();

@@ -69,10 +69,7 @@ export default function TranscriptPanel({
                   return (
                     <span
                       key={wi}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onWordClick(word.text);
-                      }}
+                      onClick={() => onWordClick(word.text)}
                       className={`inline-block mr-1 rounded px-0.5 cursor-pointer hover:bg-neutral-700 ${
                         highlight ? "bg-emerald-500/30 ring-1 ring-emerald-400" : ""
                       }`}

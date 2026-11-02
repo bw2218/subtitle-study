@@ -98,27 +98,45 @@ export default function WatchPage() {
     saveTranscript(videoId, { title, sentences: parsed, savedAt: Date.now() });
   }
 
-  // fetch translations once sentences are ready
+  // fetch translations once sentences are ready, in small chunks so they
+  // appear progressively instead of blocking on one giant slow request
   useEffect(() => {
     if (sentences.length === 0) return;
     let cancelled = false;
     setTranslationsLoaded(false);
-    fetch("/api/translate", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ texts: sentences.map((s) => s.text) }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
+    setTranslations(new Array(sentences.length).fill(""));
+
+    const CHUNK_SIZE = 20;
+    const texts = sentences.map((s) => s.text);
+
+    async function run() {
+      for (let i = 0; i < texts.length; i += CHUNK_SIZE) {
         if (cancelled) return;
-        setTranslations(data.translations || []);
-      })
-      .catch(() => {
-        if (!cancelled) setTranslations([]);
-      })
-      .finally(() => {
-        if (!cancelled) setTranslationsLoaded(true);
-      });
+        const chunk = texts.slice(i, i + CHUNK_SIZE);
+        try {
+          const res = await fetch("/api/translate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ texts: chunk }),
+          });
+          const data = await res.json();
+          if (cancelled) return;
+          const chunkTranslations: string[] = data.translations || [];
+          setTranslations((prev) => {
+            const next = [...prev];
+            chunkTranslations.forEach((t, j) => {
+              next[i + j] = t;
+            });
+            return next;
+          });
+        } catch {
+          // leave this chunk's entries empty; shown as "Translation failed"
+        }
+      }
+      if (!cancelled) setTranslationsLoaded(true);
+    }
+
+    run();
     return () => {
       cancelled = true;
     };
@@ -133,6 +151,37 @@ export default function WatchPage() {
     repeatIdRef.current = repeatId;
   }, [repeatId]);
 
+  const rateRef = useRef(1);
+  useEffect(() => {
+    rateRef.current = rate;
+  }, [rate]);
+
+  // YouTube's getCurrentTime() only actually updates a few times a second,
+  // so we poll it at a modest rate and interpolate smoothly between polls
+  // using wall-clock deltas. This avoids both laggy and skipped highlights.
+  const playerClockRef = useRef({ time: 0, wallClock: performance.now(), playing: false });
+
+  useEffect(() => {
+    if (!player) return;
+    let timeoutId = 0;
+
+    const poll = () => {
+      try {
+        playerClockRef.current = {
+          time: player.getCurrentTime(),
+          wallClock: performance.now(),
+          playing: player.getPlayerState() === 1, // YT.PlayerState.PLAYING
+        };
+      } catch {
+        // player not ready yet
+      }
+      timeoutId = window.setTimeout(poll, 250);
+    };
+    poll();
+
+    return () => window.clearTimeout(timeoutId);
+  }, [player]);
+
   // playback loop
   useEffect(() => {
     if (!player) return;
@@ -141,15 +190,11 @@ export default function WatchPage() {
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      if (now - lastUpdate < 120) return;
+      if (now - lastUpdate < 50) return;
       lastUpdate = now;
 
-      let t = 0;
-      try {
-        t = player.getCurrentTime();
-      } catch {
-        return;
-      }
+      const { time, wallClock, playing } = playerClockRef.current;
+      const t = playing ? time + ((performance.now() - wallClock) / 1000) * rateRef.current : time;
       setCurrentTime(t);
 
       const rId = repeatIdRef.current;
@@ -157,6 +202,7 @@ export default function WatchPage() {
         const s = sentences.find((s) => s.id === rId);
         if (s && t >= s.end - 0.05) {
           player.seekTo(s.start, true);
+          playerClockRef.current = { time: s.start, wallClock: performance.now(), playing: true };
         }
       }
     };
@@ -196,6 +242,8 @@ export default function WatchPage() {
   function handleSeekSentence(sentence: Sentence) {
     player?.seekTo(sentence.start, true);
     player?.playVideo();
+    playerClockRef.current = { time: sentence.start, wallClock: performance.now(), playing: true };
+    setCurrentTime(sentence.start);
   }
 
   function handleToggleRepeat(id: number) {
