@@ -13,7 +13,7 @@ export default function Home() {
     e.preventDefault();
     const videoId = parseVideoId(url);
     if (!videoId) {
-      setError("유튜브 링크를 다시 확인해주세요.");
+      setError("Please check the YouTube link and try again.");
       return;
     }
     router.push(`/watch/${videoId}`);
@@ -22,9 +22,9 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-neutral-950 text-neutral-100 px-4">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-semibold mb-2 text-center">자막 영어 스터디</h1>
+        <h1 className="text-2xl font-semibold mb-2 text-center">Subtitle English Study</h1>
         <p className="text-neutral-400 text-center mb-8">
-          유튜브 링크를 넣으면 자막을 보면서 공부할 수 있어요.
+          Paste a YouTube link and study the video sentence by sentence.
         </p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input
@@ -42,11 +42,11 @@ export default function Home() {
             type="submit"
             className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors py-3 font-medium"
           >
-            시작하기
+            Start
           </button>
         </form>
         <p className="text-neutral-500 text-xs text-center mt-6">
-          영어 자막(CC)이 있는 영상만 지원돼요. 자동으로 안 가져와지면 직접 붙여넣을 수 있는 화면이 나와요.
+          Works best with videos that have English captions (CC). If it can&apos;t be fetched automatically, you&apos;ll get a screen to paste the transcript yourself.
         </p>
       </div>
     </div>

@@ -58,7 +58,7 @@ export default function WatchPage() {
     fetch(`/api/transcript?videoId=${encodeURIComponent(videoId)}`)
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "자막을 가져오지 못했어요.");
+        if (!res.ok) throw new Error(data.error || "Couldn't fetch the transcript.");
         return data as TranscriptResponse;
       })
       .then((data) => {
@@ -69,7 +69,7 @@ export default function WatchPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setLoadError(err instanceof Error ? err.message : "자막을 자동으로 가져오지 못했어요.");
+        setLoadError(err instanceof Error ? err.message : "Couldn't fetch the transcript automatically.");
         fetch(`/api/title?videoId=${encodeURIComponent(videoId)}`)
           .then((res) => res.json())
           .then((data) => {
@@ -90,7 +90,7 @@ export default function WatchPage() {
     e.preventDefault();
     const parsed = parseTranscript(pasteText);
     if (parsed.length === 0) {
-      setPasteError("자막을 읽지 못했어요. 형식을 확인해주세요.");
+      setPasteError("Couldn't read that transcript. Please check the format.");
       return;
     }
     setSentences(parsed);
@@ -232,7 +232,7 @@ export default function WatchPage() {
     } catch {
       setExplainState((prev) => ({
         ...prev,
-        [sentence.id]: { loading: false, error: "설명을 가져오지 못했어요." },
+        [sentence.id]: { loading: false, error: "Couldn't get the explanation." },
       }));
     }
   }
@@ -241,9 +241,9 @@ export default function WatchPage() {
     <div className="h-screen flex flex-col bg-neutral-950 text-neutral-100">
       <div className="flex items-center gap-3 px-3 py-2 border-b border-neutral-800 shrink-0 overflow-x-auto">
         <Link href="/" className="text-neutral-400 hover:text-white text-sm shrink-0">
-          ← 뒤로
+          ← Back
         </Link>
-        <h1 className="text-sm font-medium truncate flex-1 min-w-[80px]">{title || "불러오는 중..."}</h1>
+        <h1 className="text-sm font-medium truncate flex-1 min-w-[80px]">{title || "Loading..."}</h1>
         <div className="flex items-center gap-1 shrink-0">
           {RATES.map((r) => (
             <button
@@ -264,15 +264,15 @@ export default function WatchPage() {
           <span>
             <span className="text-emerald-400 font-medium">{selectedWord.word}</span>{" "}
             {selectedWord.loading ? (
-              <span className="text-neutral-500">발음기호 찾는 중...</span>
+              <span className="text-neutral-500">Looking up pronunciation...</span>
             ) : selectedWord.ipa ? (
               <span className="text-neutral-300">{selectedWord.ipa}</span>
             ) : (
-              <span className="text-neutral-500">발음기호를 찾지 못했어요</span>
+              <span className="text-neutral-500">Couldn&apos;t find a pronunciation</span>
             )}
           </span>
         ) : (
-          <span className="text-neutral-500">자막에서 단어를 눌러보면 발음기호가 여기 나와요</span>
+          <span className="text-neutral-500">Tap a word in the transcript to see its pronunciation here</span>
         )}
       </div>
 
@@ -281,16 +281,16 @@ export default function WatchPage() {
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {loading && <p className="p-4 text-neutral-400 text-sm">자막을 불러오는 중...</p>}
+        {loading && <p className="p-4 text-neutral-400 text-sm">Loading transcript...</p>}
         {!loading && loadError && sentences.length === 0 && (
           <form onSubmit={handlePasteSubmit} className="p-4 flex flex-col gap-3">
             <p className="text-amber-400 text-sm">{loadError}</p>
             <div className="rounded-lg bg-neutral-900/60 border border-neutral-800 px-4 py-3 text-xs text-neutral-400 leading-relaxed">
-              <p className="text-neutral-300 font-medium mb-1">자막 복사하는 방법</p>
+              <p className="text-neutral-300 font-medium mb-1">How to copy the transcript</p>
               <ol className="list-decimal list-inside space-y-0.5">
-                <li>유튜브에서 이 영상을 열고, 설명란 아래 &quot;⋯ 더보기&quot; 또는 &quot;스크립트 표시&quot; 버튼을 눌러요.</li>
-                <li>열린 자막 패널 안을 클릭하고 Ctrl+A(전체선택) → Ctrl+C(복사)를 눌러요.</li>
-                <li>아래 칸에 Ctrl+V로 붙여넣어요.</li>
+                <li>Open this video on YouTube, and under the description click &quot;...more&quot; then &quot;Show transcript&quot;.</li>
+                <li>Click inside the transcript panel, then press Ctrl+A (select all) and Ctrl+C (copy).</li>
+                <li>Paste it below with Ctrl+V.</li>
               </ol>
             </div>
             <textarea
@@ -308,7 +308,7 @@ export default function WatchPage() {
               type="submit"
               className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors py-3 font-medium"
             >
-              이 자막으로 시작하기
+              Start with this transcript
             </button>
           </form>
         )}

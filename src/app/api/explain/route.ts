@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "AI 키가 아직 설정되지 않았어요. 설정 후 이 기능을 쓸 수 있어요." },
+      { error: "The AI key hasn't been set up yet. This feature will work once it is." },
       { status: 501 }
     );
   }
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const sentence = body?.sentence;
   if (typeof sentence !== "string" || !sentence.trim()) {
-    return NextResponse.json({ error: "sentence가 필요해요." }, { status: 400 });
+    return NextResponse.json({ error: "sentence is required." }, { status: 400 });
   }
 
   try {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (!res.ok) {
       const text = await res.text();
       return NextResponse.json(
-        { error: `AI 호출에 실패했어요: ${res.status} ${text.slice(0, 200)}` },
+        { error: `AI call failed: ${res.status} ${text.slice(0, 200)}` },
         { status: 502 }
       );
     }
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const explanation = data?.content?.[0]?.text ?? "";
     return NextResponse.json({ explanation });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했어요.";
+    const message = err instanceof Error ? err.message : "An unknown error occurred.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

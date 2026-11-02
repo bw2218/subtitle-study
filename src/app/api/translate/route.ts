@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const texts = body?.texts;
   if (!Array.isArray(texts) || texts.some((t) => typeof t !== "string")) {
-    return NextResponse.json({ error: "texts 배열이 필요해요." }, { status: 400 });
+    return NextResponse.json({ error: "A texts array is required." }, { status: 400 });
   }
   if (texts.length > 1000) {
-    return NextResponse.json({ error: "한 번에 너무 많은 문장이에요." }, { status: 400 });
+    return NextResponse.json({ error: "Too many sentences at once." }, { status: 400 });
   }
   const translations = await translateAll(texts);
   return NextResponse.json({ translations });

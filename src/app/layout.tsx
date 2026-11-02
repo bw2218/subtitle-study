@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "자막 영어 스터디",
-  description: "유튜브 링크로 자막 보며 영어 공부하기",
+  title: "Subtitle English Study",
+  description: "Study English with YouTube subtitles",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

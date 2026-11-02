@@ -85,21 +85,21 @@ export default function TranscriptPanel({
               <div className="flex gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => onToggleRepeat(sentence.id)}
-                  title="이 문장 반복"
+                  title="Repeat this sentence"
                   className={`text-xs px-2 py-1 rounded border ${
                     isRepeating
                       ? "bg-emerald-600 border-emerald-500 text-white"
                       : "border-neutral-700 text-neutral-300 hover:bg-neutral-800"
                   }`}
                 >
-                  반복{isRepeating ? " 중" : ""}
+                  {isRepeating ? "Repeating" : "Repeat"}
                 </button>
                 <button
                   onClick={() => onExplain(sentence)}
-                  title="AI 설명"
+                  title="AI explanation"
                   className="text-xs px-2 py-1 rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800"
                 >
-                  설명
+                  Explain
                 </button>
               </div>
             </div>
@@ -108,13 +108,13 @@ export default function TranscriptPanel({
               {translation
                 ? translation
                 : translationsLoaded
-                ? "번역 실패"
-                : "번역 중..."}
+                ? "Translation failed"
+                : "Translating..."}
             </p>
 
             {explain && (
               <div className="mt-2 text-sm rounded-md bg-neutral-900 border border-neutral-800 px-3 py-2">
-                {explain.loading && <span className="text-neutral-400">설명 생성 중...</span>}
+                {explain.loading && <span className="text-neutral-400">Generating explanation...</span>}
                 {explain.error && <span className="text-amber-400">{explain.error}</span>}
                 {explain.text && <span className="text-neutral-200 whitespace-pre-wrap">{explain.text}</span>}
               </div>

@@ -11,13 +11,13 @@ type SupadataSegment = {
 export async function GET(req: NextRequest) {
   const videoId = req.nextUrl.searchParams.get("videoId");
   if (!videoId) {
-    return NextResponse.json({ error: "videoId가 필요해요." }, { status: 400 });
+    return NextResponse.json({ error: "videoId is required." }, { status: 400 });
   }
 
   const apiKey = process.env.SUPADATA_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "자막 자동 추출 키가 아직 설정되지 않았어요. 아래에 자막을 직접 붙여넣어주세요." },
+      { error: "Automatic transcript fetching isn't set up yet. Please paste the transcript below." },
       { status: 501 }
     );
   }
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (!res.ok) {
       const body = await res.text();
       return NextResponse.json(
-        { error: `자막을 가져오지 못했어요 (${res.status}). 아래에 자막을 직접 붙여넣어주세요. ${body.slice(0, 150)}` },
+        { error: `Couldn't fetch the transcript (${res.status}). Please paste it below. ${body.slice(0, 150)}` },
         { status: 502 }
       );
     }
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const segments: SupadataSegment[] = data.content ?? [];
     if (segments.length === 0) {
       return NextResponse.json(
-        { error: "이 영상에는 자막이 없는 것 같아요. 아래에 자막을 직접 붙여넣어주세요." },
+        { error: "This video doesn't seem to have a transcript. Please paste it below." },
         { status: 404 }
       );
     }
@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ videoId, title: title ?? "", sentences });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "자막을 가져오는 중 오류가 발생했어요.";
-    return NextResponse.json({ error: `${message} 아래에 자막을 직접 붙여넣어주세요.` }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Something went wrong while fetching the transcript.";
+    return NextResponse.json({ error: `${message} Please paste it below.` }, { status: 500 });
   }
 }
