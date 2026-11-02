@@ -6,10 +6,11 @@ import Link from "next/link";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import TranscriptPanel, { ExplainState } from "@/components/TranscriptPanel";
 import type { YTPlayer } from "@/types/youtube-iframe";
-import type { Sentence } from "@/lib/types";
+import type { Sentence, TranscriptResponse } from "@/lib/types";
 import { splitWords, normalizeWord, TimedWord } from "@/lib/words";
 import { fetchIpa } from "@/lib/dictionary";
 import { loadTranscript, saveTranscript } from "@/lib/storage";
+import { parseTranscript } from "@/lib/parseTranscript";
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5];
 
@@ -37,33 +38,65 @@ export default function WatchPage() {
   const ipaCache = useRef<Map<string, string | null>>(new Map());
 
   const [explainState, setExplainState] = useState<Record<number, ExplainState>>({});
+  const [pasteText, setPasteText] = useState("");
+  const [pasteError, setPasteError] = useState("");
 
-  // load transcript saved from the home page
+  // load transcript: try the local cache first, then auto-fetch, else fall back to manual paste
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setLoadError("");
+
     const stored = loadTranscript(videoId);
-    if (!stored || stored.sentences.length === 0) {
-      setLoadError("자막 데이터가 없어요. 홈으로 돌아가서 링크와 자막을 다시 넣어주세요.");
+    if (stored && stored.sentences.length > 0) {
+      setTitle(stored.title);
+      setSentences(stored.sentences);
       setLoading(false);
       return;
     }
-    setTitle(stored.title);
-    setSentences(stored.sentences);
-    setLoading(false);
 
-    if (!stored.title) {
-      fetch(`/api/title?videoId=${encodeURIComponent(videoId)}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.title) {
-            setTitle(data.title);
-            saveTranscript(videoId, { ...stored, title: data.title });
-          }
-        })
-        .catch(() => {});
-    }
+    fetch(`/api/transcript?videoId=${encodeURIComponent(videoId)}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "자막을 가져오지 못했어요.");
+        return data as TranscriptResponse;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setTitle(data.title);
+        setSentences(data.sentences);
+        saveTranscript(videoId, { title: data.title, sentences: data.sentences, savedAt: Date.now() });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err instanceof Error ? err.message : "자막을 자동으로 가져오지 못했어요.");
+        fetch(`/api/title?videoId=${encodeURIComponent(videoId)}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (!cancelled && data.title) setTitle(data.title);
+          })
+          .catch(() => {});
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [videoId]);
+
+  function handlePasteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = parseTranscript(pasteText);
+    if (parsed.length === 0) {
+      setPasteError("자막을 읽지 못했어요. 형식을 확인해주세요.");
+      return;
+    }
+    setSentences(parsed);
+    setLoadError("");
+    saveTranscript(videoId, { title, sentences: parsed, savedAt: Date.now() });
+  }
 
   // fetch translations once sentences are ready
   useEffect(() => {
@@ -249,8 +282,37 @@ export default function WatchPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         {loading && <p className="p-4 text-neutral-400 text-sm">자막을 불러오는 중...</p>}
-        {loadError && <p className="p-4 text-red-400 text-sm">{loadError}</p>}
-        {!loading && !loadError && (
+        {!loading && loadError && sentences.length === 0 && (
+          <form onSubmit={handlePasteSubmit} className="p-4 flex flex-col gap-3">
+            <p className="text-amber-400 text-sm">{loadError}</p>
+            <div className="rounded-lg bg-neutral-900/60 border border-neutral-800 px-4 py-3 text-xs text-neutral-400 leading-relaxed">
+              <p className="text-neutral-300 font-medium mb-1">자막 복사하는 방법</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>유튜브에서 이 영상을 열고, 설명란 아래 &quot;⋯ 더보기&quot; 또는 &quot;스크립트 표시&quot; 버튼을 눌러요.</li>
+                <li>열린 자막 패널 안을 클릭하고 Ctrl+A(전체선택) → Ctrl+C(복사)를 눌러요.</li>
+                <li>아래 칸에 Ctrl+V로 붙여넣어요.</li>
+              </ol>
+            </div>
+            <textarea
+              value={pasteText}
+              onChange={(e) => {
+                setPasteText(e.target.value);
+                setPasteError("");
+              }}
+              placeholder={"0:00\nso welcome to this video\n0:03\ntoday we're going to talk about..."}
+              rows={8}
+              className="w-full rounded-lg bg-neutral-900 border border-neutral-700 px-4 py-3 text-sm outline-none focus:border-emerald-500 font-mono"
+            />
+            {pasteError && <p className="text-red-400 text-sm">{pasteError}</p>}
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 transition-colors py-3 font-medium"
+            >
+              이 자막으로 시작하기
+            </button>
+          </form>
+        )}
+        {!loading && sentences.length > 0 && (
           <TranscriptPanel
             sentences={sentences}
             wordsBySentence={wordsBySentence}
