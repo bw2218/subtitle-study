@@ -7,7 +7,7 @@ import YouTubePlayer from "@/components/YouTubePlayer";
 import TranscriptPanel, { ExplainState } from "@/components/TranscriptPanel";
 import type { YTPlayer } from "@/types/youtube-iframe";
 import type { Sentence, TranscriptResponse } from "@/lib/types";
-import { splitWords, normalizeWord, TimedWord } from "@/lib/words";
+import { splitWords, normalizeWord } from "@/lib/words";
 import { fetchIpa } from "@/lib/dictionary";
 import { loadTranscript, saveTranscript } from "@/lib/storage";
 import { parseTranscript } from "@/lib/parseTranscript";
@@ -40,6 +40,7 @@ export default function WatchPage() {
   const [explainState, setExplainState] = useState<Record<number, ExplainState>>({});
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // load transcript: try the local cache first, then auto-fetch, else fall back to manual paste
   useEffect(() => {
@@ -142,10 +143,7 @@ export default function WatchPage() {
     };
   }, [sentences]);
 
-  const wordsBySentence = useMemo<TimedWord[][]>(
-    () => sentences.map((s) => splitWords(s.text, s.start, s.end)),
-    [sentences]
-  );
+  const wordsBySentence = useMemo<string[][]>(() => sentences.map((s) => splitWords(s.text)), [sentences]);
 
   useEffect(() => {
     repeatIdRef.current = repeatId;
@@ -221,17 +219,6 @@ export default function WatchPage() {
     return null;
   }, [sentences, currentTime]);
 
-  const activeWordIndex = useMemo(() => {
-    if (!activeSentence) return null;
-    const idx = sentences.findIndex((s) => s.id === activeSentence.id);
-    const words = wordsBySentence[idx];
-    if (!words) return null;
-    for (let i = 0; i < words.length; i++) {
-      if (currentTime >= words[i].start && currentTime < words[i].end) return i;
-    }
-    return words.length - 1;
-  }, [activeSentence, sentences, wordsBySentence, currentTime]);
-
   const handleReady = useCallback((p: YTPlayer) => {
     setPlayer(p);
   }, []);
@@ -250,6 +237,17 @@ export default function WatchPage() {
 
   function handleToggleRepeat(id: number) {
     setRepeatId((prev) => (prev === id ? null : id));
+  }
+
+  async function handleCopyTranscript() {
+    const text = sentences.map((s) => s.text).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard access denied; nothing we can do without a user gesture prompt
+    }
   }
 
   async function handleWordClick(rawWord: string) {
@@ -294,6 +292,14 @@ export default function WatchPage() {
           ← Back
         </Link>
         <h1 className="text-sm font-medium truncate flex-1 min-w-[80px]">{title || "Loading..."}</h1>
+        {sentences.length > 0 && (
+          <button
+            onClick={handleCopyTranscript}
+            className="text-xs px-2 py-1 rounded bg-neutral-800 text-neutral-300 hover:bg-neutral-700 shrink-0"
+          >
+            {copied ? "Copied!" : "Copy transcript"}
+          </button>
+        )}
         <div className="flex items-center gap-1 shrink-0">
           {RATES.map((r) => (
             <button
@@ -369,7 +375,6 @@ export default function WatchPage() {
             translations={translations}
             translationsLoaded={translationsLoaded}
             activeSentenceId={activeSentence?.id ?? null}
-            activeWordIndex={activeWordIndex}
             repeatId={repeatId}
             onToggleRepeat={handleToggleRepeat}
             onSeekSentence={handleSeekSentence}
