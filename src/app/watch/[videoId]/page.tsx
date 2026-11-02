@@ -157,8 +157,10 @@ export default function WatchPage() {
   }, [rate]);
 
   // YouTube's getCurrentTime() only actually updates a few times a second,
-  // so we poll it at a modest rate and interpolate smoothly between polls
-  // using wall-clock deltas. This avoids both laggy and skipped highlights.
+  // so we poll it and interpolate smoothly between polls using wall-clock
+  // deltas. "playing" is inferred from whether time actually moved between
+  // polls rather than getPlayerState(), which reports stale/wrong values on
+  // some mobile browsers and was causing the highlight to freeze.
   const playerClockRef = useRef({ time: 0, wallClock: performance.now(), playing: false });
 
   useEffect(() => {
@@ -167,15 +169,15 @@ export default function WatchPage() {
 
     const poll = () => {
       try {
-        playerClockRef.current = {
-          time: player.getCurrentTime(),
-          wallClock: performance.now(),
-          playing: player.getPlayerState() === 1, // YT.PlayerState.PLAYING
-        };
+        const newTime = player.getCurrentTime();
+        const prev = playerClockRef.current;
+        const dt = newTime - prev.time;
+        const playing = dt > 0.05 && dt < 2; // advanced roughly as expected since last poll
+        playerClockRef.current = { time: newTime, wallClock: performance.now(), playing };
       } catch {
         // player not ready yet
       }
-      timeoutId = window.setTimeout(poll, 250);
+      timeoutId = window.setTimeout(poll, 150);
     };
     poll();
 
@@ -190,7 +192,7 @@ export default function WatchPage() {
 
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      if (now - lastUpdate < 50) return;
+      if (now - lastUpdate < 40) return;
       lastUpdate = now;
 
       const { time, wallClock, playing } = playerClockRef.current;
